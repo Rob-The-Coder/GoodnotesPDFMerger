@@ -1,5 +1,4 @@
 package it.rob.main;
-import com.itextpdf.text.DocumentException;
 import it.rob.PDFMerger.PDFMerger;
 
 import javax.swing.*;
@@ -43,8 +42,8 @@ public class Main {
     }//end-switch
     
     try {
-      PDFMerger.getInstance().convert(SLIDES_PER_PAGE, BACKGROUND_IMAGE_FILENAME);
-    } catch (DocumentException | IOException e) {
+      PDFMerger.getInstance().merge(SLIDES_PER_PAGE, BACKGROUND_IMAGE_FILENAME);
+    } catch (IOException e) {
       JOptionPane.showMessageDialog(null, "An unknown error occurred.\n"+e.getMessage());
     }//end-try
   }

@@ -1,12 +1,15 @@
 package it.rob.PDFMerger;
 
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Image;
-import com.itextpdf.text.pdf.PdfWriter;
+import com.itextpdf.io.image.ImageData;
+import com.itextpdf.io.image.ImageDataFactory;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Image;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
+import org.imgscalr.Scalr;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -15,9 +18,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.Objects;
 
@@ -26,6 +27,7 @@ public class PDFMerger {
   //ATTRIBUTES
   /*********************************************************************************/
   private static PDFMerger instance=null;
+  private static final Dimension PDF_A4_DIMENSIONS=new Dimension(595, 842);
   /*********************************************************************************/
   //CONSTRUCTOR
   /*********************************************************************************/
@@ -41,10 +43,8 @@ public class PDFMerger {
   /*********************************************************************************/
   //METHODS
   /*********************************************************************************/
-  public void convert(int SLIDES_PER_PAGE, String backgroundImageFilename) throws IOException, DocumentException {
-//    BufferedImage BGIMAGE= ImageIO.read(Objects.requireNonNull(this.getClass().getClassLoader().getResourceAsStream(backgroundImageFilename)));
-    BufferedImage BGIMAGE=readImage(backgroundImageFilename);
-    
+
+  public void merge(int SLIDES_PER_PAGE, String backgroundImageFilename) throws IOException {
     //Choosing PDFs to convert
     File[] selectedPDFs = null;
     JFileChooser chooser = new JFileChooser();
@@ -77,12 +77,14 @@ public class PDFMerger {
         ArrayList<BufferedImage> slides = new ArrayList<>();
 
         //Creating target PDF
-        Document targetPDF = new Document(new com.itextpdf.text.Rectangle(BGIMAGE.getWidth(), BGIMAGE.getHeight()));
         File destinationDirectory = new File(pdfs_target_folder.getPath());
         File file = new File(destinationDirectory, selectedPDF.getName().replaceAll("[-+^:,]", ""));
-        FileOutputStream fileOutputStream = new FileOutputStream(file);
-        PdfWriter pdfWriter = PdfWriter.getInstance(targetPDF, fileOutputStream);
-        targetPDF.open();
+
+        PdfWriter pdfWriter=new PdfWriter(file.getPath());
+        PdfDocument destPdf = new PdfDocument(pdfWriter);
+        Document targetPDF = new Document(destPdf);
+        targetPDF.setMargins(0f, 0f, 0f, 0f);
+
         System.out.println("CONVERSION OF "+ selectedPDF.getName() +" STARTED.....");
 
         //Extracting pngs from selectedPDF, after a SLIDES_PER_PAGES number of pngs an overlay image is created
@@ -91,8 +93,9 @@ public class PDFMerger {
         PDFRenderer pdfRenderer = new PDFRenderer(pdf);
         for (int i = 0; i < pdf.getNumberOfPages(); i += 1) {
           //Extracting pngs
-          BufferedImage bgImage = readImage("background.png");
+          BufferedImage bgImage = readImage(backgroundImageFilename);
           BufferedImage bim = pdfRenderer.renderImageWithDPI(i, 600, ImageType.RGB);
+
           slides.add(bim);
           System.out.println("Slide-" + i + " created successfully");
 
@@ -103,13 +106,11 @@ public class PDFMerger {
             BufferedImage overlayedImage = overlayImages(SLIDES_PER_PAGE, bgImage, slides);
             slides.clear();
 
-            //writing to target pdf
+            //writing image to target pdf
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             ImageIO.write(overlayedImage, "png", baos);
-            Image image = Image.getInstance(baos.toByteArray());
-            targetPDF.setPageSize(image);
-            targetPDF.newPage();
-            image.setAbsolutePosition(0, 0);
+            ImageData imageData= ImageDataFactory.create(baos.toByteArray());
+            Image image=new Image(imageData);
             targetPDF.add(image);
 
             counter = 0;
@@ -163,7 +164,7 @@ public class PDFMerger {
     return bgImage;
   }
 
-  private static BufferedImage readImage(String fileLocation) {
+  private BufferedImage readImage(String fileLocation) {
     BufferedImage img;
     BufferedImage convertedImg = null;
     try {
@@ -211,9 +212,13 @@ public class PDFMerger {
     * */
     //Creating a buffered image from collection picture
     BufferedImage outputImage = new BufferedImage(dimension.width, dimension.height, img.getType());
-    outputImage.getGraphics().drawImage(img.getScaledInstance(dimension.width, dimension.height, java.awt.Image.SCALE_AREA_AVERAGING), 0, 0, null);
+    Graphics2D g=outputImage.createGraphics();
+    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+    g.drawImage(img.getScaledInstance(dimension.width, dimension.height, java.awt.Image.SCALE_AREA_AVERAGING), 0, 0, null);
+    g.dispose();
 
     return outputImage;
+    //return Scalr.resize(img, Scalr.Method.QUALITY, Scalr.Mode.FIT_EXACT, dimension.width, dimension.height);
   }
   /*********************************************************************************/
 }
