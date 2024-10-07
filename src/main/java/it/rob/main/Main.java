@@ -1,5 +1,6 @@
 package it.rob.main;
 import it.rob.PDFMerger.PDFMerger;
+import org.apache.commons.cli.*;
 
 import javax.swing.*;
 import java.io.IOException;
@@ -8,43 +9,45 @@ public class Main {
   /*********************************************************************************/
   //CONSTANTS
   /*********************************************************************************/
-  private static int SLIDES_PER_PAGE;
-  private static String BACKGROUND_IMAGE_FILENAME;
+  private static int SLIDES_PER_PAGE=3;
+  private static final String DEFAULT_MERGING_FILENAME="Goodnotes.png";
+  private static final String DEFAULT_SUPERIMPOSING_FILENAME="Goodnotes.pdf";
   /*********************************************************************************/
   //METHODS
   /*********************************************************************************/
   public static void main(String[] args){
     //Checking passed arguments
-    switch (args.length) {
-      case 0:
-        SLIDES_PER_PAGE = 3;
-        BACKGROUND_IMAGE_FILENAME = "background.png";
-        break;
-      case 1:
-        if (args[0].equals("-h")) {
-          System.out.println("GoodnotesPDFMerger accepts upto 2 command line arguments:");
-          System.out.println("SLIDES_PER_PAGE: tells the PDF converter how many slides per page it needs to consider.");
-          System.out.println("BACKGROUND_IMAGE_FILENAME: specify which background image to choose");
-          System.out.println("Please note that in case no argument is passed the default values will be used, that is to say 3 for SLIDES_PER_IMAGE and \"background.png\" for BACKGROUND_IMAGE_FILENAME.");
-          System.exit(0);
-        } else {
-          SLIDES_PER_PAGE = Integer.parseInt(args[0]);
-          BACKGROUND_IMAGE_FILENAME = "background.png";
-        }//end-if
-        break;
-      case 2:
-        SLIDES_PER_PAGE = Integer.parseInt(args[0]);
-        BACKGROUND_IMAGE_FILENAME = args[1];
-        break;
-      default:
-        System.out.println("AN ERROR OCCURRED!\nInvalid number of arguments passed, please check how to use GoodnotesPDFMerger using -h parameter...");
-        System.exit(0);
-    }//end-switch
-    
+    Options options = new Options();
+
+    Option slidesPerPageOption = new Option("n", true, "Number of slides per page");
+    Option fileNameOption = new Option("f", true, "File name");
+    Option superimposingOption = new Option("s", false, "Superimposing");
+    Option mergingOption = new Option("m", false, "Merging");
+
+    options.addOption(slidesPerPageOption).addOption(superimposingOption).addOption(mergingOption).addOption(fileNameOption);
+
     try {
-      PDFMerger.getInstance().merge(SLIDES_PER_PAGE, BACKGROUND_IMAGE_FILENAME);
-    } catch (IOException e) {
-      JOptionPane.showMessageDialog(null, "An unknown error occurred.\n"+e.getMessage());
+      //Create GNU like options
+      CommandLineParser gnuParser = new GnuParser();
+      CommandLine cmd = gnuParser.parse(options, args);
+      if (cmd.hasOption("n")) {
+        SLIDES_PER_PAGE = Integer.parseInt(cmd.getOptionValue("n"));
+      }//end-if
+      if (cmd.hasOption("f")) {
+        if (cmd.hasOption("s")) {
+          PDFMerger.getInstance().superImpose(SLIDES_PER_PAGE, cmd.getOptionValue("f"));
+        }else if (cmd.hasOption("m")) {
+          PDFMerger.getInstance().merge(SLIDES_PER_PAGE, cmd.getOptionValue("f"));
+        }//end-if
+      }else{
+        if (cmd.hasOption("s")) {
+          PDFMerger.getInstance().superImpose(SLIDES_PER_PAGE, DEFAULT_SUPERIMPOSING_FILENAME);
+        }else if (cmd.hasOption("m")) {
+          PDFMerger.getInstance().merge(SLIDES_PER_PAGE, DEFAULT_MERGING_FILENAME);
+        }//end-if
+      }//endif
+    }catch (IOException | ParseException e) {
+      JOptionPane.showMessageDialog(null, "An error occurred.\n"+e.getMessage());
     }//end-try
   }
 }

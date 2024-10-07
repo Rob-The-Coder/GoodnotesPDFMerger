@@ -2,8 +2,14 @@ package it.rob.PDFMerger;
 
 import com.itextpdf.io.image.ImageData;
 import com.itextpdf.io.image.ImageDataFactory;
+import com.itextpdf.kernel.geom.AffineTransform;
+import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfPage;
+import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
+import com.itextpdf.kernel.pdf.xobject.PdfFormXObject;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Image;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -120,6 +126,88 @@ public class PDFMerger {
         pdf.close();
         targetPDF.close();
         System.out.println("CONVERSION OF "+ selectedPDF.getName() +" STOPPED.....");
+      }//end-for
+    }//end-if
+  }
+
+  public void superImpose(int SLIDES_PER_PAGE, String backgroundPagePDF) throws IOException {
+
+    //Choosing PDFs to convert
+    File[] selectedPDFs = null;
+    JFileChooser chooser = new JFileChooser();
+    chooser.setDialogTitle("Choose PDFs to convert");
+    chooser.setCurrentDirectory(new File(System.getProperty("user.home")));
+    chooser.setMultiSelectionEnabled(true);
+    chooser.setFileFilter(new FileNameExtensionFilter("PDF", "pdf"));
+    if (chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+      selectedPDFs = chooser.getSelectedFiles();
+    }//end-if
+
+    //Choosing target directory where to store PDFs
+    File pdfs_target_folder;
+    JFileChooser directoryChooser = new JFileChooser(new File(System.getProperty("user.home")));
+    directoryChooser.setDialogTitle("Choose target directory");
+    directoryChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+    directoryChooser.setAcceptAllFileFilterUsed(false);
+    if (directoryChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+      pdfs_target_folder=directoryChooser.getSelectedFile();
+    }else {
+      pdfs_target_folder=directoryChooser.getFileSystemView().getDefaultDirectory();
+    }//end-if
+
+    if(selectedPDFs!=null){
+      for(File selectedPDF : selectedPDFs){
+        System.out.println("SUPERIMPOSING OF "+ selectedPDF.getName() +" STARTED.....");
+        //Creating target PDF
+        File destinationDirectory = new File(pdfs_target_folder.getPath());
+        File file = new File(destinationDirectory, selectedPDF.getName().replaceAll("[-+^:,]", ""));
+
+        // Creating a PdfDocument objects
+        PdfDocument targetPDF = new PdfDocument(new PdfWriter(file.getPath()));
+        PdfDocument backgroundPDF = new PdfDocument(new PdfReader(Objects.requireNonNull(PDFMerger.getInstance().getClass().getClassLoader().getResourceAsStream(backgroundPagePDF))));
+        PdfDocument slidePDF = new PdfDocument(new PdfReader(selectedPDF.getPath()));
+
+        //Looping each slide
+        int counter=0;
+        ArrayList<PdfPage> pages=new ArrayList<>();
+        for (int i = 0; i < slidePDF.getNumberOfPages(); i += 1) {
+          // Opening a page from the existing PDF
+          pages.add(slidePDF.getPage(i+1));
+
+          System.out.println("Slide-" + i + " extracted successfully");
+
+          counter += 1;
+
+          //If we reach SLIDES_PER_PAGE, or we reach the end of the PDF we create the overlay and write in the target PDF
+          if (counter == SLIDES_PER_PAGE || i == slidePDF.getNumberOfPages() - 1) {
+            PdfPage page = targetPDF.addNewPage(PageSize.A4);
+            PdfCanvas canvas = new PdfCanvas(page);
+            canvas.addXObject(backgroundPDF.getPage(1).copyAsFormXObject(targetPDF), 0, 0);
+            for (int j=0; j<pages.size(); j+=1){
+              // Getting the page size
+              com.itextpdf.kernel.geom.Rectangle origSize = pages.get(j).getPageSize();
+
+              // Getting the size of the page
+              PdfFormXObject pageCopy = pages.get(j).copyAsFormXObject(targetPDF);
+
+              Dimension scaledDimension=getScaledDimension(new Dimension((int) origSize.getWidth(), (int) origSize.getHeight()), new Dimension((int) backgroundPDF.getPage(1).getPageSize().getWidth(), (int) (backgroundPDF.getPage(1).getPageSize().getHeight()/SLIDES_PER_PAGE)));
+              AffineTransform transformationMatrix = AffineTransform.getScaleInstance(scaledDimension.getWidth()/origSize.getWidth() , page.getPageSize().getHeight()/ origSize.getHeight()/3);
+
+              // j-th tile
+              if(j==0)
+                canvas.concatMatrix(transformationMatrix);
+              canvas.addXObject(pageCopy, 0, origSize.getHeight()*(SLIDES_PER_PAGE-1-j));
+            }//end-for
+
+            System.out.println("Page-" + (i/SLIDES_PER_PAGE) + " created successfully\n");
+
+            pages.clear();
+            counter = 0;
+          }//end-if
+        }//end-for
+        targetPDF.close();
+        slidePDF.close();
+        System.out.println("SUPERIMPOSING OF "+ selectedPDF.getName() +" STOPPED.....\n");
       }//end-for
     }//end-if
   }
