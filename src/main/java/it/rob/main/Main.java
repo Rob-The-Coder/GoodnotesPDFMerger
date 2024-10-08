@@ -1,9 +1,9 @@
 package it.rob.main;
+import it.rob.Exceptions.ArgumentException;
 import it.rob.PDFMerger.PDFMerger;
 import org.apache.commons.cli.*;
 
 import javax.swing.*;
-import java.io.IOException;
 
 public class Main {
   /*********************************************************************************/
@@ -19,34 +19,41 @@ public class Main {
     //Checking passed arguments
     Options options = new Options();
 
-    Option slidesPerPageOption = new Option("n", true, "Number of slides per page");
-    Option fileNameOption = new Option("f", true, "File name");
-    Option superimposingOption = new Option("s", false, "Superimposing");
-    Option mergingOption = new Option("m", false, "Merging");
+    Option helpOption = new Option("h", "help", false, "Print help message");
+    Option slidesPerPageOption = new Option("n", "number",true, "Specify how many slides per page it needs to use. (Default is 3)");
+    Option fileNameOption = new Option("f", "filename",true, "Specify which file is used as background. An example is \"Goodnotes.pdf\" or \"Goodnotes.png\".\n" +
+            "Beware that when choosing -s the default file is \"Goodnotes.pdf\" whereas for -m is \"Goodnotes.png\".");
+    Option superimposingOption = new Option("s", "superimposing",false, "Uses pdfs superimposing technique to merge slides onto background.");
+    Option mergingOption = new Option("m","merging", false, "Uses images merging technique to merge slides onto background.");
 
-    options.addOption(slidesPerPageOption).addOption(superimposingOption).addOption(mergingOption).addOption(fileNameOption);
+    options.addOption(helpOption).addOption(slidesPerPageOption).addOption(fileNameOption).addOption(mergingOption).addOption(superimposingOption);
 
     try {
       //Create GNU like options
       CommandLineParser gnuParser = new GnuParser();
       CommandLine cmd = gnuParser.parse(options, args);
-      if (cmd.hasOption("n")) {
-        SLIDES_PER_PAGE = Integer.parseInt(cmd.getOptionValue("n"));
-      }//end-if
-      if (cmd.hasOption("f")) {
-        if (cmd.hasOption("s")) {
-          PDFMerger.getInstance().superImpose(SLIDES_PER_PAGE, cmd.getOptionValue("f"));
-        }else if (cmd.hasOption("m")) {
-          PDFMerger.getInstance().merge(SLIDES_PER_PAGE, cmd.getOptionValue("f"));
-        }//end-if
+
+      if(cmd.hasOption(helpOption)){
+        final HelpFormatter formatter = new HelpFormatter();
+        final String syntax = "java -jar GoodnotesPDFMerger -args";
+        final String usageHeader = "List of options for GoodnotesPDFMerger.jar";
+        final String footer = "Either one of -m or -s is mandatory, if you use both at the same time by default superimpose will be used.";
+        formatter.printHelp(syntax, usageHeader, options, footer);
       }else{
-        if (cmd.hasOption("s")) {
-          PDFMerger.getInstance().superImpose(SLIDES_PER_PAGE, DEFAULT_SUPERIMPOSING_FILENAME);
-        }else if (cmd.hasOption("m")) {
-          PDFMerger.getInstance().merge(SLIDES_PER_PAGE, DEFAULT_MERGING_FILENAME);
+        if (cmd.hasOption(slidesPerPageOption)) {
+          SLIDES_PER_PAGE = Integer.parseInt(cmd.getOptionValue("n"));
         }//end-if
-      }//endif
-    }catch (IOException | ParseException e) {
+
+        if(cmd.hasOption(superimposingOption)){
+          PDFMerger.getInstance().superImpose(SLIDES_PER_PAGE, cmd.hasOption(fileNameOption) ? cmd.getOptionValue(fileNameOption) : DEFAULT_SUPERIMPOSING_FILENAME );
+        }else if(cmd.hasOption(mergingOption)){
+          PDFMerger.getInstance().merge(SLIDES_PER_PAGE, cmd.hasOption(fileNameOption) ? cmd.getOptionValue(fileNameOption) : DEFAULT_MERGING_FILENAME );
+        }else{
+          throw new ArgumentException();
+        }//end-if
+      }//end-if
+
+    }catch (Exception e) {
       JOptionPane.showMessageDialog(null, "An error occurred.\n"+e.getMessage());
     }//end-try
   }

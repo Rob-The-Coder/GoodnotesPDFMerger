@@ -15,7 +15,6 @@ import com.itextpdf.layout.element.Image;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
-import org.imgscalr.Scalr;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -33,7 +32,6 @@ public class PDFMerger {
   //ATTRIBUTES
   /*********************************************************************************/
   private static PDFMerger instance=null;
-  private static final Dimension PDF_A4_DIMENSIONS=new Dimension(595, 842);
   /*********************************************************************************/
   //CONSTRUCTOR
   /*********************************************************************************/
@@ -164,8 +162,8 @@ public class PDFMerger {
 
         // Creating a PdfDocument objects
         PdfDocument targetPDF = new PdfDocument(new PdfWriter(file.getPath()));
-        PdfDocument backgroundPDF = new PdfDocument(new PdfReader(Objects.requireNonNull(PDFMerger.getInstance().getClass().getClassLoader().getResourceAsStream(backgroundPagePDF))));
-        PdfDocument slidePDF = new PdfDocument(new PdfReader(selectedPDF.getPath()));
+        PdfDocument backgroundPDF = new PdfDocument(new PdfReader(Objects.requireNonNull(PDFMerger.getInstance().getClass().getClassLoader().getResourceAsStream(backgroundPagePDF))).setUnethicalReading(true));
+        PdfDocument slidePDF = new PdfDocument(new PdfReader(selectedPDF.getPath()).setUnethicalReading(true));
 
         //Looping each slide
         int counter=0;
@@ -306,7 +304,6 @@ public class PDFMerger {
     g.dispose();
 
     return outputImage;
-    //return Scalr.resize(img, Scalr.Method.QUALITY, Scalr.Mode.FIT_EXACT, dimension.width, dimension.height);
   }
   /*********************************************************************************/
 }
