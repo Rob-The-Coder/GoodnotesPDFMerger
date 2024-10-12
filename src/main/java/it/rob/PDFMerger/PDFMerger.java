@@ -189,7 +189,7 @@ public class PDFMerger {
               PdfFormXObject pageCopy = pages.get(j).copyAsFormXObject(targetPDF);
 
               Dimension scaledDimension=getScaledDimension(new Dimension((int) origSize.getWidth(), (int) origSize.getHeight()), new Dimension((int) backgroundPDF.getPage(1).getPageSize().getWidth(), (int) (backgroundPDF.getPage(1).getPageSize().getHeight()/SLIDES_PER_PAGE)));
-              AffineTransform transformationMatrix = AffineTransform.getScaleInstance(scaledDimension.getWidth()/origSize.getWidth() , page.getPageSize().getHeight()/ origSize.getHeight()/3);
+              AffineTransform transformationMatrix = AffineTransform.getScaleInstance(scaledDimension.getWidth()/origSize.getWidth() , page.getPageSize().getHeight()/ origSize.getHeight()/SLIDES_PER_PAGE);
 
               // j-th tile
               if(j==0)
